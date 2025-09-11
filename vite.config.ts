@@ -3,10 +3,10 @@ import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   build: {
-    minify: false, 
+    minify: mode === 'production', 
     outDir: 'dist',
     rollupOptions: {
       input: {
@@ -34,4 +34,4 @@ export default defineConfig({
       '@': resolve(process.cwd(), './src'),
     },
   },
-})
+}))

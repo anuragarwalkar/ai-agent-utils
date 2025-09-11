@@ -44,6 +44,28 @@ A Chrome extension that provides AI-powered tools for web page interaction, incl
    - Click "Load unpacked"
    - Select the `dist` folder
 
+### Production Build & Publishing
+
+1. **Create publishable package**:
+   ```bash
+   npm run package
+   ```
+   This creates a `ai-agent-utils-v[VERSION].zip` file ready for Chrome Web Store submission.
+
+2. **Alternative methods**:
+   ```bash
+   # Using shell script
+   ./scripts/package-extension.sh
+   
+   # Step by step
+   npm run validate     # Lint and validate
+   npm run build:prod   # Build for production  
+   npm run zip         # Create ZIP package
+   ```
+
+3. **Chrome Web Store submission**:
+   See `CHROME_STORE_GUIDE.md` for detailed publishing instructions.
+
 ### Configuration
 
 1. Click the extension icon in Chrome toolbar

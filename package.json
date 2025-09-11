@@ -6,9 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build --mode development",
+    "build:prod": "tsc -b && vite build --mode production",
     "build:base": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "package": "npm run build:prod && npm run zip",
+    "zip": "cd dist && zip -r ../ai-agent-utils-extension.zip . -x '*.DS_Store'",
+    "validate": "npm run lint && npm run build:prod"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.3.0",
