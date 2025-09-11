@@ -6,6 +6,7 @@ import { resolve } from 'path'
 export default defineConfig({
   plugins: [react()],
   build: {
+    minify: false, 
     outDir: 'dist',
     rollupOptions: {
       input: {
@@ -15,9 +16,16 @@ export default defineConfig({
         content: 'src/content/index.ts',
       },
       output: {
-        entryFileNames: '[name].js',
+        entryFileNames: (chunkInfo) => {
+          // For content and background scripts, we need different handling
+          if (chunkInfo.name === 'content' || chunkInfo.name === 'background') {
+            return '[name].js'
+          }
+          return '[name].js'
+        },
         chunkFileNames: '[name].js',
-        assetFileNames: '[name].[ext]'
+        assetFileNames: '[name].[ext]',
+        format: 'es', // Use ES modules format initially
       }
     }
   },
