@@ -12,9 +12,21 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "icons": {
+    "16": "icon-128x128.png",
+    "32": "icon-128x128.png",
+    "48": "icon-128x128.png",
+    "128": "icon-128x128.png"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "AI Agent"
+    "default_title": "AI Agent",
+    "default_icon": {
+      "16": "icon-128x128.png",
+      "32": "icon-128x128.png",
+      "48": "icon-128x128.png",
+      "128": "icon-128x128.png"
+    }
   },
   "content_scripts": [
     {
