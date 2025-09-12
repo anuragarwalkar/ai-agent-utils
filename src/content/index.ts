@@ -1,4 +1,5 @@
 import { createLogger } from '@/utils/log';
+import { AIOverlayManager } from './VanillaOverlay';
 
 const logger = createLogger('CONTENT_SCRIPT');
 
@@ -7,8 +8,11 @@ const logger = createLogger('CONTENT_SCRIPT');
 
 class ContentScript {
   private isInitialized = false;
+  private currentTargetElement: HTMLElement | null = null;
+  private overlayManager: AIOverlayManager;
 
   constructor() {
+    this.overlayManager = new AIOverlayManager();
     this.init();
   }
 
@@ -19,9 +23,58 @@ class ContentScript {
     
     this.setupMessageListener();
     this.setupUIElements();
+    this.setupRightClickHandling();
     
     this.isInitialized = true;
     logger.info('init', 'Content script initialized successfully');
+  }
+
+  private setupRightClickHandling() {
+    // Track the current target element for context menu actions
+    document.addEventListener('contextmenu', (event) => {
+      const target = event.target as HTMLElement;
+      this.currentTargetElement = target;
+      
+      // Store the target element for potential AI input filling
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+        logger.debug('contextmenu', 'Right-clicked on input element', { 
+          type: target.tagName,
+          name: target.name,
+          id: target.id 
+        });
+      }
+    });
+
+    // Listen for clicks on input elements to show AI assistance
+    document.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement;
+      
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+        // Add a subtle indicator that AI assistance is available
+        this.addAIIndicator(target);
+      }
+    });
+  }
+
+  private addAIIndicator(element: HTMLInputElement | HTMLTextAreaElement) {
+    // Add a subtle visual indicator that AI assistance is available
+    if (element.dataset.aiIndicatorAdded) return;
+    
+    element.dataset.aiIndicatorAdded = 'true';
+    element.style.boxShadow = '0 0 0 1px rgba(59, 130, 246, 0.3)';
+    element.style.transition = 'box-shadow 0.2s ease';
+    
+    // Remove indicator after a short time
+    setTimeout(() => {
+      element.style.boxShadow = '';
+      element.style.transition = '';
+      delete element.dataset.aiIndicatorAdded;
+    }, 2000);
+
+    logger.debug('addAIIndicator', 'AI indicator added to input', { 
+      type: element.tagName,
+      id: element.id 
+    });
   }
 
   private setupMessageListener() {
@@ -52,6 +105,70 @@ class ContentScript {
           sendResponse({ success: true });
           break;
 
+        case 'GET_TARGET_ELEMENT':
+          sendResponse({ 
+            success: true, 
+            data: { 
+              hasTarget: !!this.currentTargetElement,
+              targetInfo: this.currentTargetElement ? {
+                tagName: this.currentTargetElement.tagName,
+                type: (this.currentTargetElement as HTMLInputElement).type || 'unknown',
+                id: this.currentTargetElement.id,
+                name: (this.currentTargetElement as HTMLInputElement).name || '',
+              } : null
+            }
+          });
+          break;
+
+        case 'FOCUS_TARGET_ELEMENT':
+          if (this.currentTargetElement instanceof HTMLInputElement || 
+              this.currentTargetElement instanceof HTMLTextAreaElement) {
+            this.currentTargetElement.focus();
+            sendResponse({ success: true });
+          } else {
+            sendResponse({ success: false, error: 'No valid target element' });
+          }
+          break;
+
+        case 'SHOW_AI_INPUT_OVERLAY':
+          logger.info('onMessage', 'Showing AI input overlay', { hasTarget: !!this.currentTargetElement });
+          this.overlayManager.showOverlay({
+            context: 'fill_input',
+            targetElement: this.currentTargetElement
+          });
+          sendResponse({ success: true });
+          break;
+
+        case 'SHOW_AI_TEXT_OVERLAY':
+          logger.info('onMessage', 'Showing AI text overlay', { selectedText: request.data?.selectedText });
+          this.overlayManager.showOverlay({
+            context: 'fix_text',
+            initialText: request.data?.selectedText || ''
+          });
+          sendResponse({ success: true });
+          break;
+
+        case 'SHOW_AI_OVERLAY':
+          logger.info('onMessage', 'Showing AI general overlay');
+          this.overlayManager.showOverlay({
+            context: 'general'
+          });
+          sendResponse({ success: true });
+          break;
+
+        case 'SHOW_AI_QUESTION_OVERLAY':
+          logger.info('onMessage', 'Showing AI question overlay');
+          this.overlayManager.showOverlay({
+            context: 'question_page'
+          });
+          sendResponse({ success: true });
+          break;
+
+        case 'PING':
+          logger.debug('onMessage', 'Content script ping received');
+          sendResponse({ success: true, message: 'Content script is active' });
+          break;
+
         default:
           logger.warn('onMessage', 'Unknown message type', request.type);
           sendResponse({ success: false, error: 'Unknown message type' });
@@ -66,6 +183,21 @@ class ContentScript {
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'A') {
         event.preventDefault();
         this.handleQuickTextFix();
+      }
+      
+      // Ctrl+Shift+T to test overlay (for debugging)
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'T') {
+        event.preventDefault();
+        console.log('[CONTENT] Testing overlay trigger');
+        // Simulate a message to show overlay
+        chrome.runtime.sendMessage({
+          type: 'SHOW_AI_OVERLAY',
+          data: { context: 'general' }
+        }).then(response => {
+          console.log('[CONTENT] Test message response:', response);
+        }).catch(error => {
+          console.error('[CONTENT] Test message error:', error);
+        });
       }
     });
 
