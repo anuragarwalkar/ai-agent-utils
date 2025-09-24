@@ -294,7 +294,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   switch (request.type) {
     case 'GET_PAGE_CONTENT':
-      handleGetPageContent(sender.tab?.id, sendResponse);
+      handleGetPageContentFromPopup(sendResponse);
       return true; // Keep message channel open for async response
 
     case 'FILL_INPUTS':
@@ -315,21 +315,31 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-async function handleGetPageContent(tabId: number | undefined, sendResponse: (response: { success: boolean; data?: unknown; error?: string }) => void) {
+async function handleGetPageContentFromPopup(sendResponse: (response: { success: boolean; data?: unknown; error?: string }) => void) {
   try {
-    if (!tabId) {
-      throw new Error('No tab ID provided');
+    // When called from popup, we need to get the active tab
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    if (!activeTab?.id) {
+      throw new Error('No active tab found');
     }
+
+    logger.info('handleGetPageContentFromPopup', 'Getting content from active tab', { 
+      tabId: activeTab.id, 
+      url: activeTab.url 
+    });
 
     // Inject content script to extract page content
     const results = await chrome.scripting.executeScript({
-      target: { tabId },
+      target: { tabId: activeTab.id },
       func: extractPageContent,
     });
 
     const pageContent = results[0]?.result;
-    logger.info('handleGetPageContent', 'Page content extracted', { 
-      length: pageContent?.content?.length 
+    logger.info('handleGetPageContentFromPopup', 'Page content extracted', { 
+      title: pageContent?.title,
+      contentLength: pageContent?.content?.length,
+      url: pageContent?.url
     });
 
     sendResponse({ 
@@ -337,13 +347,15 @@ async function handleGetPageContent(tabId: number | undefined, sendResponse: (re
       data: pageContent 
     });
   } catch (error) {
-    logger.error('handleGetPageContent', 'Failed to get page content', error);
+    logger.error('handleGetPageContentFromPopup', 'Failed to get page content', error);
     sendResponse({ 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error' 
     });
   }
 }
+
+
 
 async function handleFillInputs(tabId: number | undefined, inputData: { selector: string; value: string }[], sendResponse: (response: { success: boolean; data?: unknown; error?: string }) => void) {
   try {

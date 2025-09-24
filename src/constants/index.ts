@@ -27,9 +27,22 @@ export const MESSAGES = {
     NO_API_KEY: 'Please configure your API key in extension settings',
     INVALID_CONFIG: 'Invalid configuration. Please check your settings',
     NETWORK_ERROR: 'Network error. Please try again',
+    CONTENT_SCRIPT_UNAVAILABLE: 'Unable to read page content. Please refresh the page and try again.',
+    QUESTION_FAILED: 'Failed to answer question. Please try again.',
   },
   SUCCESS: {
     CONFIG_SAVED: 'Configuration saved successfully',
     TEXT_FIXED: 'Text has been auto-fixed',
+    QUESTION_ANSWERED: 'Question answered successfully',
+  },
+  QA: {
+    CONTEXT_ENABLED: 'Questions will be answered using the current page content',
+    CONTEXT_DISABLED: 'Questions will be answered using general knowledge only',
+    SUGGESTIONS: [
+      "What is this page about?",
+      "Summarize the main points", 
+      "What are the key features?",
+      "How does this work?"
+    ],
   },
 } as const;

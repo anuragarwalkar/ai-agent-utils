@@ -8,6 +8,9 @@ export interface QuestionAnswer {
   question: string;
   answer: string;
   context: string;
+  pageTitle?: string;
+  pageUrl?: string;
+  contextLength?: number;
   success: boolean;
   error?: string;
 }
@@ -23,24 +26,34 @@ export class QuestionAnswererTool {
   
   async answerQuestion(question: string, useCurrentPage = true): Promise<QuestionAnswer> {
     try {
-      logger.info('answerQuestion', 'Answering question', { question });
+      logger.info('answerQuestion', 'Answering question', { question, useCurrentPage });
       
       let context = '';
+      let pageTitle = '';
+      let pageUrl = '';
+      let contextLength = 0;
       
       if (useCurrentPage) {
         const pageContent = await this.webReader.readCurrentPage();
-        if (pageContent.success) {
-          context = `Page Title: ${pageContent.title}\nPage Content: ${pageContent.content}`;
+        if (pageContent.success && pageContent.content.trim()) {
+          pageTitle = pageContent.title;
+          pageUrl = pageContent.url;
+          contextLength = pageContent.content.length;
+          
+          // Create structured context
+          context = this.formatPageContext(pageContent);
+          logger.info('answerQuestion', 'Using page context', { 
+            title: pageTitle, 
+            contentLength: contextLength 
+          });
+        } else {
+          logger.warn('answerQuestion', 'Failed to get page content, using general knowledge', 
+            pageContent.error);
         }
       }
       
-      const systemPrompt = `You are a helpful assistant that answers questions based on the provided context. 
-If context is provided, use it to answer the question. If no context is available, use your general knowledge.
-Provide clear, concise, and accurate answers.`;
-      
-      const userPrompt = context 
-        ? `Context: ${context}\n\nQuestion: ${question}`
-        : `Question: ${question}`;
+      const systemPrompt = this.buildSystemPrompt(!!context);
+      const userPrompt = this.buildUserPrompt(question, context);
       
       const messages: ChatMessage[] = [
         { role: 'system', content: systemPrompt },
@@ -65,6 +78,9 @@ Provide clear, concise, and accurate answers.`;
         question,
         answer: response.content.trim(),
         context,
+        pageTitle,
+        pageUrl,
+        contextLength,
         success: true,
       };
       
@@ -77,6 +93,46 @@ Provide clear, concise, and accurate answers.`;
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       };
+    }
+  }
+
+  private formatPageContext(pageContent: { title: string; content: string; url: string }): string {
+    const { title, content, url } = pageContent;
+    
+    return `Current webpage information:
+Title: ${title}
+URL: ${url}
+Content: ${content}`;
+  }
+
+  private buildSystemPrompt(hasContext: boolean): string {
+    if (hasContext) {
+      return `You are a helpful AI assistant that answers questions based on the current webpage content. 
+You have access to the page's title, URL, and text content.
+
+Guidelines:
+- Use the provided webpage context to answer questions accurately
+- If the question relates to the page content, prioritize information from the page
+- If the question is general and not related to the page, you can use your general knowledge
+- Be specific and reference relevant parts of the page when applicable
+- If the page content doesn't contain enough information to answer the question, say so clearly
+- Provide concise but complete answers
+
+Always be helpful, accurate, and honest about the limitations of the available information.`;
+    } else {
+      return `You are a helpful AI assistant. Answer the user's question using your general knowledge.
+Provide clear, concise, and accurate answers. If you're unsure about something, say so.`;
+    }
+  }
+
+  private buildUserPrompt(question: string, context: string): string {
+    if (context.trim()) {
+      return `${context}
+
+Based on the above webpage content, please answer this question:
+${question}`;
+    } else {
+      return question;
     }
   }
 }

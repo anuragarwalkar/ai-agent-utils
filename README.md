@@ -6,14 +6,14 @@ A Chrome extension that provides AI-powered tools for web page interaction, incl
 
 ### ✅ Fully Implemented
 - **Text Fixer Tool**: Auto-fix text using AI with custom prompts
+- **Question Answerer**: Answer questions based on current page content with intelligent webpage context extraction
+- **Web Reader**: Extract and read web page content for AI processing
 - **Configuration Management**: OpenAI-compatible API settings with model and temperature controls
 - **Chrome Extension Infrastructure**: Complete popup, options page, background script, and content script setup
 - **Redux State Management**: Centralized state management for configuration
 - **Modern React UI**: Built with React 18, TypeScript, and Vite
 
 ### 🚧 Placeholder Tools (Ready for Implementation)
-- **Web Reader**: Extract and read web page content
-- **Question Answerer**: Answer questions based on current page content  
 - **Input Filler**: Automatically fill form inputs based on user prompts
 
 ## Architecture
