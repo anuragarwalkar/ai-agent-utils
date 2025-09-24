@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AI Agent Utils",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Chrome extension with AI agent capabilities for web page interaction and automation",
   "permissions": [
     "activeTab",
