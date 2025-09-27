@@ -19,14 +19,32 @@ class ContentScript {
   private init() {
     if (this.isInitialized) return;
     
+    console.log('[CONTENT] Content script initializing on:', window.location.href);
     logger.info('init', 'Content script initializing', { url: window.location.href });
     
-    this.setupMessageListener();
-    this.setupUIElements();
-    this.setupRightClickHandling();
-    
-    this.isInitialized = true;
-    logger.info('init', 'Content script initialized successfully');
+    try {
+      this.setupMessageListener();
+      console.log('[CONTENT] Message listener set up');
+      
+      this.setupUIElements();
+      console.log('[CONTENT] UI elements set up');
+      
+      this.setupRightClickHandling();
+      console.log('[CONTENT] Right-click handling set up');
+      
+      this.isInitialized = true;
+      console.log('[CONTENT] Content script initialized successfully');
+      logger.info('init', 'Content script initialized successfully');
+      
+      // Announce readiness to background script
+      chrome.runtime.sendMessage({ type: 'CONTENT_SCRIPT_READY' }).catch(() => {
+        // Ignore errors - background script might not be listening
+      });
+      
+    } catch (error) {
+      console.error('[CONTENT] Error during initialization:', error);
+      logger.error('init', 'Content script initialization failed', error);
+    }
   }
 
   private setupRightClickHandling() {
@@ -80,6 +98,7 @@ class ContentScript {
   private setupMessageListener() {
     // Listen for messages from background script or popup
     chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+      console.log('[CONTENT] Received message:', request.type, request);
       logger.info('onMessage', 'Received message', { type: request.type });
 
       switch (request.type) {
@@ -140,9 +159,12 @@ class ContentScript {
           break;
 
         case 'SHOW_AI_TEXT_OVERLAY':
-          logger.info('onMessage', 'Showing AI text overlay', { selectedText: request.data?.selectedText });
+          logger.info('onMessage', 'Showing AI text overlay', { 
+            selectedText: request.data?.selectedText,
+            context: request.data?.context 
+          });
           this.overlayManager.showOverlay({
-            context: 'fix_text',
+            context: request.data?.context || 'fix_text',
             initialText: request.data?.selectedText || ''
           });
           sendResponse({ success: true });
@@ -165,8 +187,9 @@ class ContentScript {
           break;
 
         case 'PING':
+          console.log('[CONTENT] PING received, responding...');
           logger.debug('onMessage', 'Content script ping received');
-          sendResponse({ success: true, message: 'Content script is active' });
+          sendResponse({ success: true, message: 'Content script is active', timestamp: Date.now() });
           break;
 
         default:
@@ -357,8 +380,36 @@ class ContentScript {
 }
 
 // Initialize content script when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => new ContentScript());
-} else {
-  new ContentScript();
+console.log('[CONTENT] Script loaded, document.readyState:', document.readyState);
+
+let contentScriptInstance: ContentScript | null = null;
+
+function initializeContentScript() {
+  try {
+    if (contentScriptInstance) {
+      console.log('[CONTENT] Content script already initialized');
+      return;
+    }
+    console.log('[CONTENT] Creating new ContentScript instance');
+    contentScriptInstance = new ContentScript();
+    console.log('[CONTENT] ContentScript instance created successfully');
+  } catch (error) {
+    console.error('[CONTENT] Failed to initialize content script:', error);
+  }
 }
+
+if (document.readyState === 'loading') {
+  console.log('[CONTENT] Document loading, waiting for DOMContentLoaded');
+  document.addEventListener('DOMContentLoaded', initializeContentScript);
+} else {
+  console.log('[CONTENT] Document ready, initializing immediately');
+  initializeContentScript();
+}
+
+// Failsafe: Initialize after a short delay if not already done
+setTimeout(() => {
+  if (!contentScriptInstance) {
+    console.log('[CONTENT] Failsafe initialization after 1 second');
+    initializeContentScript();
+  }
+}, 1000);

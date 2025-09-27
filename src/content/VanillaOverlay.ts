@@ -3,7 +3,7 @@ import { createLogger } from '@/utils/log';
 const logger = createLogger('AI_OVERLAY_VANILLA');
 
 interface OverlayConfig {
-  context: 'fill_input' | 'fix_text' | 'general' | 'question_page';
+  context: 'fill_input' | 'fix_text' | 'general' | 'question_page' | 'summarize-short' | 'summarize-medium' | 'summarize-detailed' | 'rephrase-casual' | 'rephrase-formal' | 'rephrase-professional' | 'expand-text' | 'shorten-text';
   initialText?: string;
   targetElement?: HTMLElement | null;
 }
@@ -28,13 +28,56 @@ export class AIOverlayManager {
     this.createOverlay();
     this.isVisible = true;
     
-    // Focus the prompt input
+    // Auto-populate prompt for specific processing types and generate immediately
     setTimeout(() => {
       const promptInput = this.overlay?.querySelector('.ai-overlay-prompt-input') as HTMLTextAreaElement;
       if (promptInput) {
-        promptInput.focus();
+        const autoPrompt = this.getAutoPromptForContext(config.context);
+        if (autoPrompt) {
+          promptInput.value = autoPrompt;
+          // For processing types, auto-generate immediately
+          if (this.shouldAutoGenerate(config.context)) {
+            const container = this.overlay?.querySelector('.ai-overlay-container') as HTMLElement;
+            if (container) {
+              this.handleGenerate(container);
+            }
+          }
+        } else {
+          promptInput.focus();
+        }
       }
     }, 100);
+  }
+
+  private getAutoPromptForContext(context: string): string {
+    switch (context) {
+      case 'summarize-short':
+      case 'summarize-medium':  
+      case 'summarize-detailed':
+      case 'rephrase-casual':
+      case 'rephrase-formal':
+      case 'rephrase-professional':
+      case 'expand-text':
+      case 'shorten-text':
+      case 'fix_text':
+        return 'Process the selected text as requested.';
+      default:
+        return '';
+    }
+  }
+
+  private shouldAutoGenerate(context: string): boolean {
+    return [
+      'summarize-short',
+      'summarize-medium',
+      'summarize-detailed',
+      'rephrase-casual',
+      'rephrase-formal',
+      'rephrase-professional',
+      'expand-text',
+      'shorten-text',
+      'fix_text'
+    ].includes(context);
   }
 
   private hideOverlay() {
@@ -115,11 +158,30 @@ export class AIOverlayManager {
   private getContextualPrompt(): string {
     if (!this.currentConfig) return 'How can I assist you?';
     
-    switch (this.currentConfig.context) {
+    const context = this.currentConfig.context;
+    const initialText = this.currentConfig.initialText;
+    
+    switch (context) {
       case 'fill_input':
         return 'What would you like to generate for this input field?';
       case 'fix_text':
-        return `Fix or improve this text: "${this.currentConfig.initialText}"`;
+        return `Fix or improve this text: "${initialText || 'selected text'}"`;
+      case 'summarize-short':
+        return `Create a short summary: "${initialText || 'selected text'}"`;
+      case 'summarize-medium':
+        return `Create a medium summary: "${initialText || 'selected text'}"`;
+      case 'summarize-detailed':
+        return `Create a detailed summary: "${initialText || 'selected text'}"`;
+      case 'rephrase-casual':
+        return `Rephrase in casual tone: "${initialText || 'selected text'}"`;
+      case 'rephrase-formal':
+        return `Rephrase in formal tone: "${initialText || 'selected text'}"`;
+      case 'rephrase-professional':
+        return `Rephrase in professional tone: "${initialText || 'selected text'}"`;
+      case 'expand-text':
+        return `Expand and elaborate: "${initialText || 'selected text'}"`;
+      case 'shorten-text':
+        return `Make more concise: "${initialText || 'selected text'}"`;
       case 'question_page':
         return 'What would you like to know about this page?';
       default:
